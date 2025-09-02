@@ -1,43 +1,28 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Building,
-  Shield,
-  Grid3X3,
-  Calendar,
-  AlertTriangle,
-  Users,
+  LayoutGrid,
   FileText,
-  BarChart3,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
+  GitCompare,
+  Calendar,
+  Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navigationItems = [
   {
-    title: "Dashboard",
+    title: "Assignment Matrix",
     href: "/",
-    icon: LayoutDashboard,
+    icon: LayoutGrid,
   },
   {
-    title: "Properties",
-    href: "/properties",
-    icon: Building,
-  },
-  {
-    title: "Policies",
+    title: "Policies", 
     href: "/policies",
-    icon: Shield,
+    icon: FileText,
   },
   {
-    title: "Coverage Matrix",
-    href: "/coverage-matrix",
-    icon: Grid3X3,
+    title: "Compare",
+    href: "/compare", 
+    icon: GitCompare,
   },
   {
     title: "Renewals",
@@ -45,101 +30,41 @@ const navigationItems = [
     icon: Calendar,
   },
   {
-    title: "Claims",
-    href: "/claims",
-    icon: AlertTriangle,
-  },
-  {
     title: "Contacts",
     href: "/contacts",
     icon: Users,
   },
-  {
-    title: "Documents",
-    href: "/documents",
-    icon: FileText,
-  },
-  {
-    title: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-  },
 ];
 
-interface SidebarProps {
-  className?: string;
-}
-
-export function Sidebar({ className }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-
+export function Sidebar() {
   return (
-    <div
-      className={cn(
-        "relative flex flex-col border-r bg-background transition-all duration-300",
-        collapsed ? "w-16" : "w-64",
-        className
-      )}
-    >
-      {/* Toggle Button */}
-      <div className="flex h-16 items-center justify-end px-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="h-8 w-8"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
+    <div className="flex w-64 flex-col border-r bg-background">
+      <div className="flex h-14 items-center border-b px-6">
+        <span className="text-sm font-medium text-muted-foreground">Navigation</span>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 p-4">
         {navigationItems.map((item) => {
           const Icon = item.icon;
-          const content = (
+          return (
             <NavLink
               key={item.href}
               to={item.href}
+              end={item.href === '/'}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",
                   isActive
                     ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground",
-                  collapsed ? "justify-center" : "gap-3"
+                    : "text-muted-foreground"
                 )
               }
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
+              <Icon className="h-4 w-4" />
+              <span>{item.title}</span>
             </NavLink>
           );
-
-          if (collapsed) {
-            return (
-              <Tooltip key={item.href} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  {content}
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>{item.title}</p>
-                </TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          return content;
         })}
       </nav>
     </div>

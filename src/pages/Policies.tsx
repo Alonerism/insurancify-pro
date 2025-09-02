@@ -1,205 +1,104 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageSquare, FileText, Edit, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Shield, Search, Plus, MoreVertical, Building, Calendar, DollarSign } from "lucide-react";
-
-const mockPolicies = [
-  {
-    id: 1,
-    policyNumber: "GL-2024-001",
-    type: "General Liability",
-    property: "Downtown Office Complex",
-    carrier: "State Farm",
-    broker: "ABC Insurance Brokers",
-    effectiveDate: "2024-01-01",
-    expirationDate: "2024-12-31",
-    premium: "$12,500",
-    status: "active",
-    daysToExpiry: 334,
-  },
-  {
-    id: 2,
-    policyNumber: "PROP-2024-002",
-    type: "Property Insurance",
-    property: "Riverside Apartments",
-    carrier: "Allstate",
-    broker: "XYZ Risk Management",
-    effectiveDate: "2024-02-15",
-    expirationDate: "2025-02-14",
-    premium: "$45,000",
-    status: "active",
-    daysToExpiry: 379,
-  },
-  {
-    id: 3,
-    policyNumber: "UMB-2024-003",
-    type: "Umbrella",
-    property: "Oak Tower Building",
-    carrier: "Travelers",
-    broker: "ABC Insurance Brokers",
-    effectiveDate: "2024-01-15",
-    expirationDate: "2024-03-15",
-    premium: "$8,200",
-    status: "expiring",
-    daysToExpiry: 15,
-  },
-];
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import { mockPolicies, mockBuildings, mockAgents, coverageTypeLabels } from "@/data/mockData";
+import { Policy } from "@/types";
 
 export default function Policies() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
+  const [chatQuestion, setChatQuestion] = useState("");
+  const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string }>>([]);
 
-  const filteredPolicies = mockPolicies.filter((policy) =>
-    policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.carrier.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getBuildingName = (buildingId: string) => mockBuildings.find(b => b.id === buildingId)?.name || "Unknown Building";
+  const getAgentName = (agentId: string) => mockAgents.find(a => a.id === agentId)?.name || "Unknown Agent";
 
-  const getStatusBadge = (status: string, daysToExpiry: number) => {
-    if (status === "expired") {
-      return <Badge variant="destructive">Expired</Badge>;
-    }
-    if (daysToExpiry <= 30) {
-      return <Badge variant="destructive">Expiring Soon</Badge>;
-    }
-    if (daysToExpiry <= 90) {
-      return <Badge variant="secondary">Renewal Due</Badge>;
-    }
-    return <Badge variant="outline" className="text-green-600">Active</Badge>;
+  const handleAskQuestion = () => {
+    if (!chatQuestion.trim()) return;
+    const mockResponse = {
+      question: chatQuestion,
+      answer: `Based on policy ${selectedPolicy?.policyNumber}, the coverage includes ${coverageTypeLabels[selectedPolicy?.coverageType || 'general-liability']} with limits and deductibles as specified.`
+    };
+    setChatHistory([...chatHistory, mockResponse]);
+    setChatQuestion("");
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Policies</h1>
-          <p className="text-muted-foreground">
-            Manage insurance policies across your property portfolio
-          </p>
+          <h1 className="text-3xl font-bold">Policies</h1>
+          <p className="text-muted-foreground">Manage and view all insurance policies</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Policy
-        </Button>
+        <Button><Plus className="mr-2 h-4 w-4" />Add Policy</Button>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-              <Input
-                placeholder="Search policies by number, type, property, or carrier..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline">Filter by Type</Button>
-            <Button variant="outline">Filter by Status</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Policies Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Insurance Policies
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Policy</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Carrier & Broker</TableHead>
-                <TableHead>Coverage Period</TableHead>
-                <TableHead>Premium</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPolicies.map((policy) => (
-                <TableRow key={policy.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{policy.policyNumber}</div>
-                      <div className="text-sm text-muted-foreground">{policy.type}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      <span>{policy.property}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{policy.carrier}</div>
-                      <div className="text-sm text-muted-foreground">{policy.broker}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Calendar className="h-3 w-3 text-muted-foreground" />
-                      <span>{policy.effectiveDate} - {policy.expirationDate}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {policy.daysToExpiry} days remaining
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 font-medium">
-                      <DollarSign className="h-3 w-3 text-muted-foreground" />
-                      {policy.premium}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(policy.status, policy.daysToExpiry)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Policy</DropdownMenuItem>
-                        <DropdownMenuItem>View Documents</DropdownMenuItem>
-                        <DropdownMenuItem>Send Renewal Notice</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4">
+        {mockPolicies.map((policy) => (
+          <Card key={policy.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">{policy.policyNumber}</CardTitle>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{getBuildingName(policy.buildingId)} • {getAgentName(policy.agentId)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <StatusBadge status={policy.status} />
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedPolicy(policy)}>
+                        <MessageSquare className="mr-2 h-4 w-4" />Ask AI
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-[500px]">
+                      <SheetHeader>
+                        <SheetTitle>Policy Q&A - {policy.policyNumber}</SheetTitle>
+                        <SheetDescription>Ask questions about this policy</SheetDescription>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-4">
+                        <Textarea
+                          placeholder="What are the coverage limits?"
+                          value={chatQuestion}
+                          onChange={(e) => setChatQuestion(e.target.value)}
+                        />
+                        <Button onClick={handleAskQuestion} className="w-full">Ask Question</Button>
+                        {chatHistory.map((chat, index) => (
+                          <div key={index} className="p-3 border rounded space-y-2">
+                            <div className="text-sm font-medium">Q: {chat.question}</div>
+                            <div className="text-sm text-muted-foreground">A: {chat.answer}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <div className="text-sm font-medium">Coverage</div>
+                  <Badge variant="secondary">{coverageTypeLabels[policy.coverageType]}</Badge>
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Carrier</div>
+                  <div className="text-sm text-muted-foreground">{policy.carrier}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Premium</div>
+                  <div className="text-sm text-muted-foreground">${policy.premiumAnnual.toLocaleString()}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
