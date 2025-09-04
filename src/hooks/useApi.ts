@@ -143,6 +143,39 @@ export function useAlerts(limit = 50, unreadOnly = false) {
   });
 }
 
+// Claims (using alerts as proxy since no dedicated claims endpoint found)
+export function useClaims(policyId?: string) {
+  return useQuery({
+    queryKey: ['claims', policyId].filter(Boolean),
+    queryFn: () => api.system.alerts(50, false), // Using alerts as proxy for now
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Policy Notes
+export function useAddPolicyNote() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, note, fileId }: { policyId: string; note: string; fileId?: string }) =>
+      api.policies.addNote(policyId, note, fileId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy-history', variables.policyId] });
+      toast({
+        title: 'Success',
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add note',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 // File Upload
 export function useFileUpload() {
   const queryClient = useQueryClient();
@@ -151,6 +184,9 @@ export function useFileUpload() {
     mutationFn: api.files.upload,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
+      if (data.policy_id) {
+        queryClient.invalidateQueries({ queryKey: ['policy-history', data.policy_id] });
+      }
       toast({
         title: 'Success',
         description: data.message,

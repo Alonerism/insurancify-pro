@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeftRight, Download, Save, MessageSquare } from "lucide-react";
+import { ArrowLeftRight, Download, Save, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { mockPolicies, mockBuildings, coverageTypeLabels } from "@/data/mockData";
-import { Policy, PolicyComparison, PolicyDifference } from "@/types";
+import { coverageTypeLabels } from "@/data/mockData";
+import { Policy, PolicyComparison, PolicyDifference, CoverageType } from "@/types";
+import { usePolicies, useBuildings } from "@/hooks/useApi";
+import { toast } from "@/hooks/use-toast";
 
 export default function Compare() {
   const [compareMode, setCompareMode] = useState<'building' | 'policy' | 'prospective'>('policy');
@@ -19,7 +21,7 @@ export default function Compare() {
   const [selectedBuildingB, setSelectedBuildingB] = useState<string>('');
   const [prospectivePolicy, setProspectivePolicy] = useState({
     buildingId: '',
-    coverageType: 'general-liability' as const,
+    coverageType: 'general-liability' as CoverageType,
     carrier: '',
     limits: { aggregate: 0, occurrence: 0 },
     deductibles: { general: 0 },
@@ -30,12 +32,16 @@ export default function Compare() {
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string }>>([]);
 
+  // API Hooks
+  const { data: policies = [], isLoading: policiesLoading, error: policiesError } = usePolicies();
+  const { data: buildings = [], isLoading: buildingsLoading } = useBuildings();
+
   const getPolicyById = (id: string): Policy | undefined => {
-    return mockPolicies.find(p => p.id === id);
+    return policies.find(p => p.id === id);
   };
 
   const getBuildingName = (buildingId: string) => {
-    return mockBuildings.find(b => b.id === buildingId)?.name || "Unknown Building";
+    return buildings.find(b => b.id === buildingId)?.name || "Unknown Building";
   };
 
   const generateDetailedComparison = (): PolicyComparison | null => {
@@ -47,13 +53,13 @@ export default function Compare() {
       policyB = getPolicyById(selectedPolicyB);
     } else if (compareMode === 'building') {
       // Find policies for selected buildings
-      const policiesA = mockPolicies.filter(p => p.buildingId === selectedBuildingA);
-      const policiesB = mockPolicies.filter(p => p.buildingId === selectedBuildingB);
+      const policiesA = policies.filter(p => p.buildingId === selectedBuildingA);
+      const policiesB = policies.filter(p => p.buildingId === selectedBuildingB);
       policyA = policiesA[0];
       policyB = policiesB[0];
     } else {
       // Prospective mode
-      const matchingPolicies = mockPolicies.filter(p => 
+      const matchingPolicies = policies.filter(p => 
         p.buildingId === prospectivePolicy.buildingId && 
         p.coverageType === prospectivePolicy.coverageType
       );
@@ -82,46 +88,109 @@ export default function Compare() {
   };
 
   const generateDifferences = (policyA: Policy | any, policyB: Policy): PolicyDifference[] => {
-    return [
-      {
-        field: 'Premium',
-        valueA: policyA.premiumAnnual,
-        valueB: policyB.premiumAnnual,
-        type: (policyA.premiumAnnual > policyB.premiumAnnual ? 'regression' : 'improvement') as 'regression' | 'improvement'
-      },
-      {
-        field: 'Carrier',
-        valueA: policyA.carrier,
-        valueB: policyB.carrier,
-        type: 'neutral' as const
-      },
-      {
-        field: 'Effective Date',
-        valueA: policyA.effectiveDate,
-        valueB: policyB.effectiveDate,
-        type: 'neutral' as const
-      },
-      {
-        field: 'Expiration Date',
-        valueA: policyA.expirationDate,
-        valueB: policyB.expirationDate,
-        type: 'neutral' as const
-      }
-    ];
+    const differences: PolicyDifference[] = [];
+    
+    // Premium comparison
+    differences.push({
+      field: 'Premium',
+      valueA: policyA.premiumAnnual,
+      valueB: policyB.premiumAnnual,
+      type: (policyA.premiumAnnual > policyB.premiumAnnual ? 'regression' : 
+             policyA.premiumAnnual < policyB.premiumAnnual ? 'improvement' : 'neutral')
+    });
+    
+    // Carrier comparison
+    differences.push({
+      field: 'Carrier',
+      valueA: policyA.carrier,
+      valueB: policyB.carrier,
+      type: 'neutral'
+    });
+    
+    // Effective Date comparison
+    differences.push({
+      field: 'Effective Date',
+      valueA: policyA.effectiveDate,
+      valueB: policyB.effectiveDate,
+      type: 'neutral'
+    });
+    
+    // Expiration Date comparison
+    differences.push({
+      field: 'Expiration Date',
+      valueA: policyA.expirationDate,
+      valueB: policyB.expirationDate,
+      type: 'neutral'
+    });
+
+    // Compare limits if available
+    if (policyA.limits && policyB.limits) {
+      Object.keys(policyA.limits).forEach(limitType => {
+        if (policyB.limits[limitType] !== undefined) {
+          differences.push({
+            field: `${limitType} Limit`,
+            valueA: policyA.limits[limitType],
+            valueB: policyB.limits[limitType],
+            type: (policyA.limits[limitType] > policyB.limits[limitType] ? 'improvement' : 
+                   policyA.limits[limitType] < policyB.limits[limitType] ? 'regression' : 'neutral')
+          });
+        }
+      });
+    }
+
+    return differences;
   };
 
   const handleAskQuestion = () => {
     if (!chatQuestion.trim()) return;
+    
+    // Mock AI response - in real implementation, this would call an AI service
     const mockResponse = {
       question: chatQuestion,
-      answer: `Comparing these two policies, the key differences include premium costs, coverage limits, and deductibles. The first policy offers different terms that may be more suitable depending on your specific risk profile and coverage needs.`
+      answer: "Based on the comparison, Policy A offers different coverage terms that may impact your risk exposure. Consider factors like premium cost, deductible amounts, and coverage limits when making your decision. The recommendation depends on your specific risk tolerance and budget constraints."
     };
+    
     setChatHistory([...chatHistory, mockResponse]);
     setChatQuestion("");
+    
+    // Show disabled message if OPENAI_API_KEY not available
+    toast({
+      title: "AI Analysis (Disabled)",
+      description: "AI features require OPENAI_API_KEY configuration",
+    });
   };
 
   const comparison = generateDetailedComparison();
   const fitScore = comparison ? Math.floor(Math.random() * 40 + 60) : 0; // Mock score
+
+  if (policiesLoading || buildingsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading comparison data...</span>
+      </div>
+    );
+  }
+
+  if (policiesError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-destructive">Unable to load policies</h3>
+              <p className="text-muted-foreground mt-2">
+                Please check your backend connection and try again.
+              </p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -155,7 +224,7 @@ export default function Compare() {
                       <SelectValue placeholder="Select first building" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockBuildings.map(building => (
+                      {buildings.map(building => (
                         <SelectItem key={building.id} value={building.id}>
                           {building.name}
                         </SelectItem>
@@ -171,7 +240,7 @@ export default function Compare() {
                       <SelectValue placeholder="Select second building" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockBuildings.map(building => (
+                      {buildings.map(building => (
                         <SelectItem key={building.id} value={building.id}>
                           {building.name}
                         </SelectItem>
@@ -196,7 +265,7 @@ export default function Compare() {
                       <SelectValue placeholder="Select first policy" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockPolicies.map(policy => (
+                      {policies.map(policy => (
                         <SelectItem key={policy.id} value={policy.id}>
                           {policy.policyNumber} - {getBuildingName(policy.buildingId)}
                         </SelectItem>
@@ -212,7 +281,7 @@ export default function Compare() {
                       <SelectValue placeholder="Select second policy" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockPolicies.map(policy => (
+                      {policies.map(policy => (
                         <SelectItem key={policy.id} value={policy.id}>
                           {policy.policyNumber} - {getBuildingName(policy.buildingId)}
                         </SelectItem>
@@ -240,10 +309,27 @@ export default function Compare() {
                       <SelectValue placeholder="Select building" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockBuildings.map(building => (
+                      {buildings.map(building => (
                         <SelectItem key={building.id} value={building.id}>
                           {building.name}
                         </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Coverage Type</Label>
+                  <Select 
+                    value={prospectivePolicy.coverageType} 
+                    onValueChange={(value) => setProspectivePolicy({...prospectivePolicy, coverageType: value as CoverageType})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select coverage type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(coverageTypeLabels).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -265,6 +351,24 @@ export default function Compare() {
                     value={prospectivePolicy.premiumAnnual}
                     onChange={(e) => setProspectivePolicy({...prospectivePolicy, premiumAnnual: Number(e.target.value)})}
                     placeholder="Enter annual premium"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Effective Date</Label>
+                  <Input 
+                    type="date"
+                    value={prospectivePolicy.effectiveDate}
+                    onChange={(e) => setProspectivePolicy({...prospectivePolicy, effectiveDate: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Expiration Date</Label>
+                  <Input 
+                    type="date"
+                    value={prospectivePolicy.expirationDate}
+                    onChange={(e) => setProspectivePolicy({...prospectivePolicy, expirationDate: e.target.value})}
                   />
                 </div>
               </CardContent>
@@ -332,9 +436,17 @@ export default function Compare() {
                   <CardTitle>Policy B</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {'policyNumber' in comparison.policyB && (
+                  {'policyNumber' in comparison.policyB ? (
                     <div className="space-y-2">
                       <div><strong>Policy #:</strong> {comparison.policyB.policyNumber}</div>
+                      <div><strong>Building:</strong> {getBuildingName(comparison.policyB.buildingId)}</div>
+                      <div><strong>Carrier:</strong> {comparison.policyB.carrier}</div>
+                      <div><strong>Coverage:</strong> {coverageTypeLabels[comparison.policyB.coverageType]}</div>
+                      <div><strong>Premium:</strong> ${comparison.policyB.premiumAnnual.toLocaleString()}</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div><strong>Type:</strong> Existing Policy</div>
                       <div><strong>Building:</strong> {getBuildingName(comparison.policyB.buildingId)}</div>
                       <div><strong>Carrier:</strong> {comparison.policyB.carrier}</div>
                       <div><strong>Coverage:</strong> {coverageTypeLabels[comparison.policyB.coverageType]}</div>
@@ -356,10 +468,10 @@ export default function Compare() {
                     <div key={index} className="grid grid-cols-3 gap-4 p-3 border rounded">
                       <div className="font-medium">{diff.field}</div>
                       <div className={diff.type === 'improvement' ? 'text-green-600' : diff.type === 'regression' ? 'text-red-600' : ''}>
-                        {typeof diff.valueA === 'number' ? diff.valueA.toLocaleString() : diff.valueA}
+                        {typeof diff.valueA === 'number' ? `$${diff.valueA.toLocaleString()}` : diff.valueA}
                       </div>
                       <div className={diff.type === 'regression' ? 'text-green-600' : diff.type === 'improvement' ? 'text-red-600' : ''}>
-                        {typeof diff.valueB === 'number' ? diff.valueB.toLocaleString() : diff.valueB}
+                        {typeof diff.valueB === 'number' ? `$${diff.valueB.toLocaleString()}` : diff.valueB}
                       </div>
                     </div>
                   ))}
@@ -369,13 +481,13 @@ export default function Compare() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button>
+              <Button disabled>
                 <Save className="mr-2 h-4 w-4" />
-                Save as Draft
+                Save as Draft (Coming Soon)
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" disabled>
                 <Download className="mr-2 h-4 w-4" />
-                Export PDF
+                Export PDF (Coming Soon)
               </Button>
             </div>
           </div>
@@ -389,6 +501,7 @@ export default function Compare() {
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Ask AI about Comparison
+              <Badge variant="secondary" className="text-xs">Disabled</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -398,7 +511,7 @@ export default function Compare() {
               onChange={(e) => setChatQuestion(e.target.value)}
             />
             <Button onClick={handleAskQuestion} className="w-full">
-              Ask Question
+              Ask Question (AI Disabled)
             </Button>
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {chatHistory.map((chat, index) => (

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Loader2, AlertTriangle, Search, Plus, MoreVertical, Building, Calendar, DollarSign, FileText } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,57 +18,53 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, Search, Plus, MoreVertical, Building, Calendar, DollarSign, FileText } from "lucide-react";
-
-const mockClaims = [
-  {
-    id: 1,
-    claimNumber: "CLM-2024-001",
-    type: "Water Damage",
-    property: "Oak Tower Building",
-    policy: "PROP-2024-002",
-    incidentDate: "2024-01-10",
-    reportedDate: "2024-01-12",
-    status: "open",
-    reserves: "$25,000",
-    paidAmount: "$5,000",
-    adjuster: "Sarah Johnson - ABC Adjusters",
-    description: "Burst pipe on 3rd floor causing water damage to multiple units",
-  },
-  {
-    id: 2,
-    claimNumber: "CLM-2024-002", 
-    type: "Slip and Fall",
-    property: "Downtown Office Complex",
-    policy: "GL-2024-001",
-    incidentDate: "2024-01-15",
-    reportedDate: "2024-01-15",
-    status: "investigating",
-    reserves: "$15,000",
-    paidAmount: "$0",
-    adjuster: "Mike Chen - Superior Claims",
-    description: "Visitor slipped in lobby area, reported minor injuries",
-  },
-  {
-    id: 3,
-    claimNumber: "CLM-2024-003",
-    type: "Fire Damage",
-    property: "Riverside Apartments",
-    policy: "PROP-2024-003",
-    incidentDate: "2023-12-20",
-    reportedDate: "2023-12-20",
-    status: "closed",
-    reserves: "$50,000",
-    paidAmount: "$47,500",
-    adjuster: "Lisa Wong - National Adjusters",
-    description: "Kitchen fire in unit 4B, smoke damage to adjacent units",
-  },
-];
+import { useAlerts, usePolicies, useBuildings } from "@/hooks/useApi";
 
 export default function Claims() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredClaims = mockClaims.filter((claim) =>
+  // Using alerts as proxy for claims since no dedicated claims endpoint exists
+  const { data: alerts = [], isLoading: alertsLoading, error: alertsError } = useAlerts(100, false);
+  const { data: policies = [] } = usePolicies();
+  const { data: buildings = [] } = useBuildings();
+
+  // Transform alerts to mock claims format
+  const mockClaims = alerts.filter(alert => alert.alert_type === 'claim' || alert.message?.toLowerCase().includes('claim')).map((alert, index) => ({
+    id: index + 1,
+    claimNumber: `CLM-2024-${String(index + 1).padStart(3, '0')}`,
+    type: alert.alert_type === 'claim' ? 'Property Damage' : 'General Claim',
+    property: alert.policy_id ? buildings.find(b => policies.find(p => p.id === alert.policy_id)?.buildingId === b.id)?.name || 'Unknown Property' : 'Unknown Property',
+    policy: alert.policy_id || 'Unknown Policy',
+    incidentDate: new Date(alert.created_at).toISOString().split('T')[0],
+    reportedDate: new Date(alert.created_at).toISOString().split('T')[0],
+    status: alert.is_read ? 'closed' : 'open',
+    reserves: '$25,000',
+    paidAmount: alert.is_read ? '$22,500' : '$0',
+    adjuster: 'System Generated',
+    description: alert.message,
+  }));
+
+  // Add some static claims for demo if no real claims data
+  const staticClaims = [
+    {
+      id: 999,
+      claimNumber: "CLM-2024-001",
+      type: "Water Damage",
+      property: "Coming Soon",
+      policy: "Demo Policy",
+      incidentDate: "2024-01-10",
+      reportedDate: "2024-01-12",
+      status: "open",
+      reserves: "$25,000",
+      paidAmount: "$5,000",
+      adjuster: "Demo Adjuster",
+      description: "Claims functionality coming soon - backend integration needed",
+    }
+  ];
+
+  const allClaims = mockClaims.length > 0 ? mockClaims : staticClaims;
+
+  const filteredClaims = allClaims.filter((claim) =>
     claim.claimNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     claim.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
     claim.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,9 +83,38 @@ export default function Claims() {
     return <Badge variant={config.variant}>{config.text}</Badge>;
   };
 
-  const totalReserves = mockClaims.reduce((sum, claim) => sum + parseFloat(claim.reserves.replace(/[$,]/g, '')), 0);
-  const totalPaid = mockClaims.reduce((sum, claim) => sum + parseFloat(claim.paidAmount.replace(/[$,]/g, '')), 0);
-  const openClaims = mockClaims.filter(claim => claim.status === 'open' || claim.status === 'investigating').length;
+  const totalReserves = allClaims.reduce((sum, claim) => sum + parseFloat(claim.reserves.replace(/[$,]/g, '')), 0);
+  const totalPaid = allClaims.reduce((sum, claim) => sum + parseFloat(claim.paidAmount.replace(/[$,]/g, '')), 0);
+  const openClaims = allClaims.filter(claim => claim.status === 'open' || claim.status === 'investigating').length;
+
+  if (alertsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading claims...</span>
+      </div>
+    );
+  }
+
+  if (alertsError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-destructive">Unable to load claims</h3>
+              <p className="text-muted-foreground mt-2">
+                Claims functionality requires backend support. Currently showing demo data.
+              </p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -99,10 +125,13 @@ export default function Claims() {
           <p className="text-muted-foreground">
             Track and manage insurance claims across your property portfolio
           </p>
+          {mockClaims.length === 0 && (
+            <Badge variant="secondary" className="mt-2">Demo Mode - Backend Integration Needed</Badge>
+          )}
         </div>
-        <Button>
+        <Button disabled>
           <Plus className="mr-2 h-4 w-4" />
-          Report New Claim
+          Report New Claim (Coming Soon)
         </Button>
       </div>
 
@@ -115,9 +144,7 @@ export default function Claims() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{openClaims}</div>
-            <p className="text-xs text-muted-foreground">
-              Requiring attention
-            </p>
+            <p className="text-xs text-muted-foreground">Requiring attention</p>
           </CardContent>
         </Card>
 
@@ -127,10 +154,8 @@ export default function Claims() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockClaims.length}</div>
-            <p className="text-xs text-muted-foreground">
-              All time
-            </p>
+            <div className="text-2xl font-bold">{allClaims.length}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
 
@@ -141,9 +166,7 @@ export default function Claims() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${totalReserves.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Reserved amounts
-            </p>
+            <p className="text-xs text-muted-foreground">Reserved amounts</p>
           </CardContent>
         </Card>
 
@@ -154,9 +177,7 @@ export default function Claims() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Settlements paid
-            </p>
+            <p className="text-xs text-muted-foreground">Settlements paid</p>
           </CardContent>
         </Card>
       </div>
@@ -174,8 +195,8 @@ export default function Claims() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">Filter by Status</Button>
-            <Button variant="outline">Filter by Type</Button>
+            <Button variant="outline" disabled>Filter by Status (Coming Soon)</Button>
+            <Button variant="outline" disabled>Filter by Type (Coming Soon)</Button>
           </div>
         </CardContent>
       </Card>
@@ -257,10 +278,10 @@ export default function Claims() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Add Note</DropdownMenuItem>
-                        <DropdownMenuItem>Upload Document</DropdownMenuItem>
-                        <DropdownMenuItem>Update Status</DropdownMenuItem>
+                        <DropdownMenuItem disabled>View Details (Coming Soon)</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Add Note (Coming Soon)</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Upload Document (Coming Soon)</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Update Status (Coming Soon)</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

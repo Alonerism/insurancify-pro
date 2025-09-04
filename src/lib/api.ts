@@ -76,6 +76,12 @@ export const api = {
       
     history: (policyId: string): Promise<any[]> =>
       fetchApi(`/policies/${policyId}/history`),
+      
+    addNote: (policyId: string, note: string, fileId?: string): Promise<{ success: boolean; message: string }> =>
+      fetchApi(`/policies/${policyId}/notes`, {
+        method: 'POST',
+        body: JSON.stringify({ note, file_id: fileId }),
+      }),
   },
 
   // Search
@@ -89,7 +95,7 @@ export const api = {
 
   // Files
   files: {
-    upload: (formData: FormData): Promise<{ success: boolean; file_id?: string; message: string }> =>
+    upload: (formData: FormData): Promise<{ success: boolean; file_id?: string; policy_id?: string; message: string; parsing_results?: any }> =>
       fetchApi('/files/upload', {
         method: 'POST',
         body: formData,
