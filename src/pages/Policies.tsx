@@ -100,7 +100,7 @@ export default function Policies() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                       onClick={() => setSelectedPolicy(policy)}
                     >
                       <MessageSquare className="mr-1 h-3 w-3" />
