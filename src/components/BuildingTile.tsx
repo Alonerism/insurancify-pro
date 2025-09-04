@@ -58,7 +58,7 @@ export function BuildingTile({
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <CardTitle className="text-sm font-medium truncate">
               {building.name}
             </CardTitle>

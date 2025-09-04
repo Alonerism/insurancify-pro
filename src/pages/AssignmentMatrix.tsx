@@ -183,81 +183,83 @@ export default function AssignmentMatrix() {
       </Card>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {/* Agent Columns */}
-        {filteredAgents.map((agent) => (
-          <div key={agent.id} className="space-y-4">
+      <div className="overflow-x-auto">
+        <div className="flex gap-6 pb-4" style={{ minWidth: 'max-content' }}>
+          {/* Agent Columns */}
+          {filteredAgents.map((agent) => (
+            <div key={agent.id} className="w-80 flex-shrink-0">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">{agent.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{agent.company}</p>
+                </CardHeader>
+                <CardContent
+                  className="min-h-[400px] space-y-3"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, agent.id)}
+                >
+                  {buildingsByAgent[agent.id]?.map((building) => {
+                    const policies = getPoliciesForBuilding(building.id);
+                    return (
+                      <BuildingTile
+                        key={building.id}
+                        building={building}
+                        policies={policies}
+                        agents={mockAgents.filter(a => a.id !== agent.id)}
+                        onMove={handleBuildingMove}
+                        onClick={handleBuildingClick}
+                      />
+                    );
+                  })}
+                  
+                  {(!buildingsByAgent[agent.id] || buildingsByAgent[agent.id].length === 0) && (
+                    <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        No buildings assigned
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ))}
+
+          {/* Unassigned Column */}
+          <div className="w-80 flex-shrink-0">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{agent.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{agent.company}</p>
+                <CardTitle className="text-lg">Unassigned</CardTitle>
+                <p className="text-sm text-muted-foreground">No agent assigned</p>
               </CardHeader>
               <CardContent
                 className="min-h-[400px] space-y-3"
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, agent.id)}
+                onDrop={(e) => handleDrop(e, 'unassigned')}
               >
-                {buildingsByAgent[agent.id]?.map((building) => {
+                {buildingsByAgent['unassigned']?.map((building) => {
                   const policies = getPoliciesForBuilding(building.id);
                   return (
                     <BuildingTile
                       key={building.id}
                       building={building}
                       policies={policies}
-                      agents={mockAgents.filter(a => a.id !== agent.id)}
+                      agents={mockAgents}
                       onMove={handleBuildingMove}
                       onClick={handleBuildingClick}
                     />
                   );
                 })}
                 
-                {(!buildingsByAgent[agent.id] || buildingsByAgent[agent.id].length === 0) && (
+                {(!buildingsByAgent['unassigned'] || buildingsByAgent['unassigned'].length === 0) && (
                   <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      No buildings assigned
+                      All buildings assigned
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
-        ))}
-
-        {/* Unassigned Column */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Unassigned</CardTitle>
-              <p className="text-sm text-muted-foreground">No agent assigned</p>
-            </CardHeader>
-            <CardContent
-              className="min-h-[400px] space-y-3"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, 'unassigned')}
-            >
-              {buildingsByAgent['unassigned']?.map((building) => {
-                const policies = getPoliciesForBuilding(building.id);
-                return (
-                  <BuildingTile
-                    key={building.id}
-                    building={building}
-                    policies={policies}
-                    agents={mockAgents}
-                    onMove={handleBuildingMove}
-                    onClick={handleBuildingClick}
-                  />
-                );
-              })}
-              
-              {(!buildingsByAgent['unassigned'] || buildingsByAgent['unassigned'].length === 0) && (
-                <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    All buildings assigned
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 
