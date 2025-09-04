@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Loader2, Building, Search, Plus, MoreVertical, MapPin, Shield } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,51 +18,77 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building, Search, Plus, MoreVertical, MapPin, Shield } from "lucide-react";
-
-const mockProperties = [
-  {
-    id: 1,
-    name: "Downtown Office Complex",
-    address: "123 Main Street, Los Angeles, CA 90210",
-    units: 25,
-    totalPolicies: 8,
-    activePolicies: 6,
-    expiringPolicies: 2,
-    totalCoverage: "$2,500,000",
-    lastUpdated: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Riverside Apartments",
-    address: "456 River Drive, Los Angeles, CA 90211",
-    units: 48,
-    totalPolicies: 12,
-    activePolicies: 10,
-    expiringPolicies: 1,
-    totalCoverage: "$4,800,000",
-    lastUpdated: "2024-01-14",
-  },
-  {
-    id: 3,
-    name: "Oak Tower Building",
-    address: "789 Oak Avenue, Los Angeles, CA 90212",
-    units: 35,
-    totalPolicies: 15,
-    activePolicies: 13,
-    expiringPolicies: 3,
-    totalCoverage: "$6,200,000",
-    lastUpdated: "2024-01-13",
-  },
-];
+import { useBuildings, usePolicies } from "@/hooks/useApi";
 
 export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
+  
+  const { data: buildings = [], isLoading: buildingsLoading, error: buildingsError } = useBuildings();
+  const { data: policies = [], isLoading: policiesLoading } = usePolicies();
 
-  const filteredProperties = mockProperties.filter((property) =>
+  const getPropertiesData = () => {
+    return buildings.map(building => {
+      const buildingPolicies = policies.filter(p => p.buildingId === building.id);
+      const activePolicies = buildingPolicies.filter(p => p.status === 'active').length;
+      const expiringPolicies = buildingPolicies.filter(p => {
+        const expDate = new Date(p.expirationDate);
+        const today = new Date();
+        const daysUntilExpiration = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+        return daysUntilExpiration <= 30 && daysUntilExpiration > 0;
+      }).length;
+
+      const totalCoverage = buildingPolicies.reduce((sum, policy) => {
+        const maxLimit = Math.max(...Object.values(policy.limits || {}));
+        return sum + (maxLimit || 0);
+      }, 0);
+
+      return {
+        id: building.id,
+        name: building.name,
+        address: building.address,
+        units: building.notes ? parseInt(building.notes.split(' ')[0]) || 0 : 0,
+        totalPolicies: buildingPolicies.length,
+        activePolicies,
+        expiringPolicies,
+        totalCoverage: `$${totalCoverage.toLocaleString()}`,
+        lastUpdated: new Date().toLocaleDateString(),
+      };
+    });
+  };
+
+  const filteredProperties = getPropertiesData().filter((property) =>
     property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     property.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (buildingsLoading || policiesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading properties...</span>
+      </div>
+    );
+  }
+
+  if (buildingsError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-destructive">Unable to load properties</h3>
+              <p className="text-muted-foreground mt-2">
+                Please check your backend connection and try again.
+              </p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

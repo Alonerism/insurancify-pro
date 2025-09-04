@@ -1,16 +1,44 @@
 import { useState } from "react";
-import { Plus, Filter, Search } from "lucide-react";
+import { Plus, Filter, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Toggle } from "@/components/ui/toggle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BuildingTile } from "@/components/BuildingTile";
 import { QuickViewDrawer } from "@/components/QuickViewDrawer";
-import { mockBuildings, mockAgents, mockPolicies, coverageTypeLabels } from "@/data/mockData";
+import { coverageTypeLabels } from "@/data/mockData";
 import { Building, Policy, Agent, CoverageType } from "@/types";
+import { useBuildings, useAgents, usePolicies, useCreateBuilding, useCreateAgent, useCreatePolicy } from "@/hooks/useApi";
+import { toast } from "@/hooks/use-toast";
+
+interface NewBuilding {
+  name: string;
+  address: string;
+  notes: string;
+  primaryAgentId: string;
+}
+
+interface NewAgent {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+}
+
+interface NewPolicy {
+  buildingId: string;
+  agentId: string;
+  coverageType: CoverageType;
+  policyNumber: string;
+  carrier: string;
+  effectiveDate: string;
+  expirationDate: string;
+  limits: Record<string, number>;
+  deductibles: Record<string, number>;
+  premiumAnnual: number;
+}
 
 export default function AssignmentMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,84 +53,70 @@ export default function AssignmentMatrix() {
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   
   // Form states
-  const [newBuilding, setNewBuilding] = useState({ name: "", address: "", primaryAgentId: "" });
-  const [newAgent, setNewAgent] = useState({ name: "", company: "", email: "", phone: "" });
-  const [newPolicy, setNewPolicy] = useState({ 
-    buildingId: "", 
-    agentId: "", 
-    coverageType: "" as CoverageType, 
-    policyNumber: "", 
-    carrier: "", 
-    effectiveDate: "", 
-    expirationDate: "", 
-    premiumAnnual: 0 
+  const [newBuilding, setNewBuilding] = useState<NewBuilding>({
+    name: '', address: '', notes: '', primaryAgentId: ''
   });
+  const [newAgent, setNewAgent] = useState<NewAgent>({
+    name: '', company: '', email: '', phone: ''
+  });
+  const [newPolicy, setNewPolicy] = useState<NewPolicy>({
+    buildingId: '', agentId: '', coverageType: 'general-liability',
+    policyNumber: '', carrier: '', effectiveDate: '', expirationDate: '',
+    limits: {}, deductibles: {}, premiumAnnual: 0
+  });
+
+  // API Hooks
+  const { data: buildings = [], isLoading: buildingsLoading, error: buildingsError } = useBuildings();
+  const { data: agents = [], isLoading: agentsLoading, error: agentsError } = useAgents();
+  const { data: policies = [], isLoading: policiesLoading, error: policiesError } = usePolicies();
   
-  // Dynamic data (in real app, this would be in global state/database)
-  const [buildings, setBuildings] = useState(mockBuildings);
-  const [agents, setAgents] = useState(mockAgents);
-  const [policies, setPolicies] = useState(mockPolicies);
+  const createBuildingMutation = useCreateBuilding();
+  const createAgentMutation = useCreateAgent();
+  const createPolicyMutation = useCreatePolicy();
 
-  // Add handlers
-  const handleAddBuilding = () => {
-    if (newBuilding.name && newBuilding.address) {
-      const building: Building = {
-        id: `building-${Date.now()}`,
-        name: newBuilding.name,
-        address: newBuilding.address,
-        primaryAgentId: newBuilding.primaryAgentId || undefined
-      };
-      setBuildings([...buildings, building]);
-      setNewBuilding({ name: "", address: "", primaryAgentId: "" });
-      setBuildingDialogOpen(false);
+  const handleAddBuilding = async () => {
+    if (!newBuilding.name || !newBuilding.address) {
+      toast({ title: "Error", description: "Name and address are required", variant: "destructive" });
+      return;
     }
+    
+    await createBuildingMutation.mutateAsync({
+      name: newBuilding.name,
+      address: newBuilding.address,
+      notes: newBuilding.notes,
+      primaryAgentId: newBuilding.primaryAgentId || undefined
+    });
+    
+    setBuildingDialogOpen(false);
+    setNewBuilding({ name: '', address: '', notes: '', primaryAgentId: '' });
   };
 
-  const handleAddAgent = () => {
-    if (newAgent.name && newAgent.company && newAgent.email) {
-      const agent: Agent = {
-        id: `agent-${Date.now()}`,
-        name: newAgent.name,
-        company: newAgent.company,
-        email: newAgent.email,
-        phone: newAgent.phone
-      };
-      setAgents([...agents, agent]);
-      setNewAgent({ name: "", company: "", email: "", phone: "" });
-      setAgentDialogOpen(false);
+  const handleAddAgent = async () => {
+    if (!newAgent.name || !newAgent.company || !newAgent.email) {
+      toast({ title: "Error", description: "Name, company, and email are required", variant: "destructive" });
+      return;
     }
+    
+    await createAgentMutation.mutateAsync(newAgent);
+    
+    setAgentDialogOpen(false);
+    setNewAgent({ name: '', company: '', email: '', phone: '' });
   };
 
-  const handleAddPolicy = () => {
-    if (newPolicy.buildingId && newPolicy.agentId && newPolicy.coverageType && newPolicy.policyNumber) {
-      const policy: Policy = {
-        id: `policy-${Date.now()}`,
-        buildingId: newPolicy.buildingId,
-        agentId: newPolicy.agentId,
-        coverageType: newPolicy.coverageType,
-        policyNumber: newPolicy.policyNumber,
-        carrier: newPolicy.carrier,
-        effectiveDate: newPolicy.effectiveDate,
-        expirationDate: newPolicy.expirationDate,
-        limits: {},
-        deductibles: {},
-        premiumAnnual: newPolicy.premiumAnnual,
-        status: 'active',
-        documents: []
-      };
-      setPolicies([...policies, policy]);
-      setNewPolicy({ 
-        buildingId: "", 
-        agentId: "", 
-        coverageType: "" as CoverageType, 
-        policyNumber: "", 
-        carrier: "", 
-        effectiveDate: "", 
-        expirationDate: "", 
-        premiumAnnual: 0 
-      });
-      setPolicyDialogOpen(false);
+  const handleAddPolicy = async () => {
+    if (!newPolicy.buildingId || !newPolicy.agentId || !newPolicy.policyNumber) {
+      toast({ title: "Error", description: "Building, agent, and policy number are required", variant: "destructive" });
+      return;
     }
+    
+    await createPolicyMutation.mutateAsync(newPolicy);
+    
+    setPolicyDialogOpen(false);
+    setNewPolicy({
+      buildingId: '', agentId: '', coverageType: 'general-liability',
+      policyNumber: '', carrier: '', effectiveDate: '', expirationDate: '',
+      limits: {}, deductibles: {}, premiumAnnual: 0
+    });
   };
 
   // Group buildings by agent
@@ -159,9 +173,8 @@ export default function AssignmentMatrix() {
   };
 
   const handleBuildingMove = (buildingId: string, newAgentId: string) => {
-    // In a real app, this would make an API call
+    // TODO: Implement building reassignment API call
     console.log(`Moving building ${buildingId} to agent ${newAgentId}`);
-    // Mock update - in real app would update the building's primaryAgentId
   };
 
   const handleDrop = (e: React.DragEvent, agentId: string) => {
@@ -169,6 +182,35 @@ export default function AssignmentMatrix() {
     const buildingId = e.dataTransfer.getData('text/plain');
     handleBuildingMove(buildingId, agentId);
   };
+
+  if (buildingsLoading || agentsLoading || policiesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading data...</span>
+      </div>
+    );
+  }
+
+  if (buildingsError || agentsError || policiesError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-destructive">Unable to load data</h3>
+              <p className="text-muted-foreground mt-2">
+                Please check your backend connection and try again.
+              </p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const buildingsByAgent = getBuildingsByAgent();
 
@@ -214,6 +256,15 @@ export default function AssignmentMatrix() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="building-notes">Notes</Label>
+                  <Input
+                    id="building-notes"
+                    value={newBuilding.notes}
+                    onChange={(e) => setNewBuilding({...newBuilding, notes: e.target.value})}
+                    placeholder="Enter notes (optional)"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="building-agent">Primary Agent (Optional)</Label>
                   <Select value={newBuilding.primaryAgentId} onValueChange={(value) => setNewBuilding({...newBuilding, primaryAgentId: value})}>
                     <SelectTrigger>
@@ -221,12 +272,17 @@ export default function AssignmentMatrix() {
                     </SelectTrigger>
                     <SelectContent>
                       {agents.map(agent => (
-                        <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name} - {agent.company}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleAddBuilding} className="w-full">Add Building</Button>
+                <Button onClick={handleAddBuilding} className="w-full" disabled={createBuildingMutation.isPending}>
+                  {createBuildingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Add Building
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -280,7 +336,10 @@ export default function AssignmentMatrix() {
                     placeholder="Enter phone number"
                   />
                 </div>
-                <Button onClick={handleAddAgent} className="w-full">Add Agent</Button>
+                <Button onClick={handleAddAgent} className="w-full" disabled={createAgentMutation.isPending}>
+                  {createAgentMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Add Agent
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -318,7 +377,9 @@ export default function AssignmentMatrix() {
                     </SelectTrigger>
                     <SelectContent>
                       {agents.map(agent => (
-                        <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name} - {agent.company}
+                        </SelectItem>  
                       ))}
                     </SelectContent>
                   </Select>
@@ -384,7 +445,10 @@ export default function AssignmentMatrix() {
                     placeholder="Enter annual premium"
                   />
                 </div>
-                <Button onClick={handleAddPolicy} className="w-full">Add Policy</Button>
+                <Button onClick={handleAddPolicy} className="w-full" disabled={createPolicyMutation.isPending}>
+                  {createPolicyMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Add Policy
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -444,32 +508,28 @@ export default function AssignmentMatrix() {
                         key={building.id}
                         building={building}
                         policies={policies}
-                        agents={agents.filter(a => a.id !== agent.id)}
-                        onMove={handleBuildingMove}
-                        onClick={handleBuildingClick}
+                        agents={agents}
+                        onClick={() => handleBuildingClick(building, policies)}
                         isExpiring={isExpiring}
                       />
                     );
                   })}
-                  
                   {(!buildingsByAgent[agent.id] || buildingsByAgent[agent.id].length === 0) && (
-                    <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        No buildings assigned
-                      </p>
+                    <div className="text-center text-muted-foreground py-8">
+                      No buildings assigned
                     </div>
                   )}
                 </CardContent>
               </Card>
             </div>
           ))}
-
+          
           {/* Unassigned Column */}
           <div className="w-80 flex-shrink-0">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Unassigned</CardTitle>
-                <p className="text-sm text-muted-foreground">No agent assigned</p>
+                <p className="text-sm text-muted-foreground">Buildings without agents</p>
               </CardHeader>
               <CardContent
                 className="min-h-[400px] space-y-3"
@@ -485,18 +545,14 @@ export default function AssignmentMatrix() {
                       building={building}
                       policies={policies}
                       agents={agents}
-                      onMove={handleBuildingMove}
-                      onClick={handleBuildingClick}
+                      onClick={() => handleBuildingClick(building, policies)}
                       isExpiring={isExpiring}
                     />
                   );
                 })}
-                
                 {(!buildingsByAgent['unassigned'] || buildingsByAgent['unassigned'].length === 0) && (
-                  <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      All buildings assigned
-                    </p>
+                  <div className="text-center text-muted-foreground py-8">
+                    No unassigned buildings
                   </div>
                 )}
               </CardContent>
@@ -505,9 +561,10 @@ export default function AssignmentMatrix() {
         </div>
       </div>
 
+      {/* Quick View Drawer */}
       <QuickViewDrawer
-        isOpen={quickViewOpen}
-        onClose={() => setQuickViewOpen(false)}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
         building={selectedBuilding}
         policies={selectedPolicies}
       />

@@ -7,24 +7,26 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Building, Policy } from "@/types";
-import { coverageTypeLabels, mockAgents } from "@/data/mockData";
+import { coverageTypeLabels } from "@/data/mockData";
+import { useAgents } from "@/hooks/useApi";
 
 interface QuickViewDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   building: Building | null;
   policies: Policy[];
 }
 
-export function QuickViewDrawer({ isOpen, onClose, building, policies }: QuickViewDrawerProps) {
+export function QuickViewDrawer({ open, onOpenChange, building, policies }: QuickViewDrawerProps) {
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string }>>([]);
   const [showChat, setShowChat] = useState(false);
 
   if (!building) return null;
 
+  const { data: agents = [] } = useAgents();
   const primaryPolicy = policies.length > 0 ? policies[0] : null;
-  const agent = primaryPolicy ? mockAgents.find(a => a.id === primaryPolicy.agentId) : null;
+  const agent = primaryPolicy ? agents.find(a => a.id === primaryPolicy.agentId) : null;
 
   const handleAskQuestion = () => {
     if (!chatQuestion.trim()) return;
@@ -37,7 +39,7 @@ export function QuickViewDrawer({ isOpen, onClose, building, policies }: QuickVi
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[500px] sm:max-w-[500px]">
         <SheetHeader>
           <div className="flex items-center justify-between">
@@ -45,7 +47,7 @@ export function QuickViewDrawer({ isOpen, onClose, building, policies }: QuickVi
               <SheetTitle>{building.name}</SheetTitle>
               <SheetDescription>{building.address}</SheetDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
