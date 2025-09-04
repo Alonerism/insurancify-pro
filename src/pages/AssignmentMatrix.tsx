@@ -1,22 +1,48 @@
 import { useState } from "react";
-import { Plus, Filter, Search } from "lucide-react";
+import { Plus, Filter, Search, LayoutGrid, LayoutList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { mockBuildings, mockAgents, mockPolicies, coverageTypeLabels } from "@/data/mockData";
-import { Building, Agent, Policy } from "@/types";
+import { Toggle } from "@/components/ui/toggle";
+import { BuildingTile } from "@/components/BuildingTile";
+import { QuickViewDrawer } from "@/components/QuickViewDrawer";
+import { mockBuildings, mockAgents, mockPolicies } from "@/data/mockData";
+import { Building, Policy } from "@/types";
 
 export default function AssignmentMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showMatrix, setShowMatrix] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [selectedPolicies, setSelectedPolicies] = useState<Policy[]>([]);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
-  // Get policies for a specific building-agent combination
-  const getPoliciesForCell = (buildingId: string, agentId: string): Policy[] => {
-    return mockPolicies.filter(
-      (policy) => policy.buildingId === buildingId && policy.agentId === agentId
-    );
+  // Group buildings by agent
+  const getBuildingsByAgent = () => {
+    const agentGroups: Record<string, Building[]> = {};
+    
+    // Initialize all agents with empty arrays
+    mockAgents.forEach(agent => {
+      agentGroups[agent.id] = [];
+    });
+    
+    // Add unassigned group
+    agentGroups['unassigned'] = [];
+    
+    // Group buildings by their primary agent
+    mockBuildings.forEach(building => {
+      const agentId = building.primaryAgentId || 'unassigned';
+      if (!agentGroups[agentId]) {
+        agentGroups[agentId] = [];
+      }
+      agentGroups[agentId].push(building);
+    });
+    
+    return agentGroups;
+  };
+
+  // Get policies for a building
+  const getPoliciesForBuilding = (buildingId: string): Policy[] => {
+    return mockPolicies.filter(policy => policy.buildingId === buildingId);
   };
 
   // Filter agents based on search
@@ -25,57 +51,92 @@ export default function AssignmentMatrix() {
     agent.company.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const PolicyCell = ({ building, agent }: { building: Building; agent: Agent }) => {
-    const policies = getPoliciesForCell(building.id, agent.id);
-    
-    if (policies.length === 0) {
-      return (
-        <div className="min-h-[80px] border-r border-b p-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full h-full border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Policy
-          </Button>
-        </div>
-      );
-    }
+  const handleBuildingClick = (building: Building, policies: Policy[]) => {
+    setSelectedBuilding(building);
+    setSelectedPolicies(policies);
+    setQuickViewOpen(true);
+  };
 
+  const handleBuildingMove = (buildingId: string, newAgentId: string) => {
+    // In a real app, this would make an API call
+    console.log(`Moving building ${buildingId} to agent ${newAgentId}`);
+    // Mock update - in real app would update the building's primaryAgentId
+  };
+
+  const handleDrop = (e: React.DragEvent, agentId: string) => {
+    e.preventDefault();
+    const buildingId = e.dataTransfer.getData('text/plain');
+    handleBuildingMove(buildingId, agentId);
+  };
+
+  const buildingsByAgent = getBuildingsByAgent();
+
+  if (showMatrix) {
+    // Classic matrix view (existing code would go here)
     return (
-      <div className="min-h-[80px] border-r border-b p-2 space-y-1">
-        {policies.map((policy) => (
-          <div key={policy.id} className="p-2 bg-muted rounded border">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium">{policy.policyNumber}</span>
-              <StatusBadge status={policy.status} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Badge variant="secondary" className="text-xs">
-                {coverageTypeLabels[policy.coverageType]}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {new Date(policy.expirationDate).toLocaleDateString()}
-              </span>
-            </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Assignment Matrix</h1>
+            <p className="text-muted-foreground">
+              Manage policy assignments across buildings and agents
+            </p>
           </div>
-        ))}
+          
+          <div className="flex gap-2">
+            <Toggle 
+              pressed={showMatrix} 
+              onPressedChange={setShowMatrix}
+              variant="outline"
+            >
+              <LayoutList className="mr-2 h-4 w-4" />
+              Matrix View
+            </Toggle>
+            <Button variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Building
+            </Button>
+            <Button variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Agent
+            </Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Policy
+            </Button>
+          </div>
+        </div>
+        
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-center text-muted-foreground">
+              Classic matrix view would be implemented here
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Assignment Matrix</h1>
+          <h1 className="text-3xl font-bold">Assignment Board</h1>
           <p className="text-muted-foreground">
-            Manage policy assignments across buildings and agents
+            Drag buildings between agents to reassign coverage
           </p>
         </div>
         
         <div className="flex gap-2">
+          <Toggle 
+            pressed={showMatrix} 
+            onPressedChange={setShowMatrix}
+            variant="outline"
+          >
+            <LayoutList className="mr-2 h-4 w-4" />
+            Matrix View
+          </Toggle>
           <Button variant="outline">
             <Plus className="mr-2 h-4 w-4" />
             Add Building
@@ -102,7 +163,7 @@ export default function AssignmentMatrix() {
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search agents or companies..."
+                  placeholder="Search buildings, agents, or policies..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -121,41 +182,91 @@ export default function AssignmentMatrix() {
         </CardContent>
       </Card>
 
-      {/* Matrix */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-auto">
-            <div className="grid min-w-max" style={{ gridTemplateColumns: `250px repeat(${filteredAgents.length}, 200px)` }}>
-              {/* Header row */}
-              <div className="sticky left-0 bg-background border-r border-b p-4 font-medium z-10">
-                Building / Agent
-              </div>
-              {filteredAgents.map((agent) => (
-                <div key={agent.id} className="border-b p-3 text-center">
-                  <div className="font-medium text-sm">{agent.name}</div>
-                  <div className="text-xs text-muted-foreground">{agent.company}</div>
-                </div>
-              ))}
-
-              {/* Matrix rows */}
-              {mockBuildings.map((building) => (
-                <div key={building.id} className="contents">
-                  {/* Building name (sticky left column) */}
-                  <div className="sticky left-0 bg-background border-r border-b p-4 z-10">
-                    <div className="font-medium">{building.name}</div>
-                    <div className="text-sm text-muted-foreground">{building.address}</div>
+      {/* Kanban Board */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* Agent Columns */}
+        {filteredAgents.map((agent) => (
+          <div key={agent.id} className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{agent.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">{agent.company}</p>
+              </CardHeader>
+              <CardContent
+                className="min-h-[400px] space-y-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDrop(e, agent.id)}
+              >
+                {buildingsByAgent[agent.id]?.map((building) => {
+                  const policies = getPoliciesForBuilding(building.id);
+                  return (
+                    <BuildingTile
+                      key={building.id}
+                      building={building}
+                      policies={policies}
+                      agents={mockAgents.filter(a => a.id !== agent.id)}
+                      onMove={handleBuildingMove}
+                      onClick={handleBuildingClick}
+                    />
+                  );
+                })}
+                
+                {(!buildingsByAgent[agent.id] || buildingsByAgent[agent.id].length === 0) && (
+                  <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      No buildings assigned
+                    </p>
                   </div>
-                  
-                  {/* Policy cells for each agent */}
-                  {filteredAgents.map((agent) => (
-                    <PolicyCell key={`${building.id}-${agent.id}`} building={building} agent={agent} />
-                  ))}
-                </div>
-              ))}
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+
+        {/* Unassigned Column */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Unassigned</CardTitle>
+              <p className="text-sm text-muted-foreground">No agent assigned</p>
+            </CardHeader>
+            <CardContent
+              className="min-h-[400px] space-y-3"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, 'unassigned')}
+            >
+              {buildingsByAgent['unassigned']?.map((building) => {
+                const policies = getPoliciesForBuilding(building.id);
+                return (
+                  <BuildingTile
+                    key={building.id}
+                    building={building}
+                    policies={policies}
+                    agents={mockAgents}
+                    onMove={handleBuildingMove}
+                    onClick={handleBuildingClick}
+                  />
+                );
+              })}
+              
+              {(!buildingsByAgent['unassigned'] || buildingsByAgent['unassigned'].length === 0) && (
+                <div className="flex items-center justify-center h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    All buildings assigned
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <QuickViewDrawer
+        isOpen={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        building={selectedBuilding}
+        policies={selectedPolicies}
+      />
     </div>
   );
 }

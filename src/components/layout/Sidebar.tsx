@@ -10,7 +10,7 @@ import {
 
 const navigationItems = [
   {
-    title: "Assignment Matrix",
+    title: "Assignment Board",
     href: "/",
     icon: LayoutGrid,
   },

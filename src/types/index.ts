@@ -4,6 +4,7 @@ export interface Building {
   name: string;
   address: string;
   notes?: string;
+  primaryAgentId?: string; // Primary agent assignment
 }
 
 export interface Agent {

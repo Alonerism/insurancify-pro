@@ -3,6 +3,7 @@ import { PolicyStatus } from "@/types";
 
 interface StatusBadgeProps {
   status: PolicyStatus;
+  size?: 'default' | 'sm';
   className?: string;
 }
 
@@ -20,11 +21,12 @@ const statusLabels: Record<PolicyStatus, string> = {
   missing: "Missing",
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, size = 'default', className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-2 py-1 font-medium",
+        size === 'sm' ? 'text-xs' : 'text-xs',
         statusStyles[status],
         className
       )}

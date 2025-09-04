@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, FileText, Edit, Plus } from "lucide-react";
+import { MessageSquare, FileText, Edit, Plus, Eye, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ export default function Policies() {
     if (!chatQuestion.trim()) return;
     const mockResponse = {
       question: chatQuestion,
-      answer: `Based on policy ${selectedPolicy?.policyNumber}, the coverage includes ${coverageTypeLabels[selectedPolicy?.coverageType || 'general-liability']} with limits and deductibles as specified.`
+      answer: `Based on policy ${selectedPolicy?.policyNumber}, the coverage includes ${coverageTypeLabels[selectedPolicy?.coverageType || 'general-liability']} with limits and deductibles as specified. The policy is managed by ${getAgentName(selectedPolicy?.agentId || '')}.`
     };
     setChatHistory([...chatHistory, mockResponse]);
     setChatQuestion("");
@@ -37,68 +37,123 @@ export default function Policies() {
         <Button><Plus className="mr-2 h-4 w-4" />Add Policy</Button>
       </div>
 
-      <div className="grid gap-4">
+      {/* Policy Cards Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {mockPolicies.map((policy) => (
-          <Card key={policy.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+          <Card key={policy.id} className="group hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
                   <CardTitle className="text-lg">{policy.policyNumber}</CardTitle>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>{getBuildingName(policy.buildingId)} • {getAgentName(policy.agentId)}</span>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {getBuildingName(policy.buildingId)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Agent: {getAgentName(policy.agentId)}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <StatusBadge status={policy.status} />
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedPolicy(policy)}>
-                        <MessageSquare className="mr-2 h-4 w-4" />Ask AI
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-[500px]">
-                      <SheetHeader>
-                        <SheetTitle>Policy Q&A - {policy.policyNumber}</SheetTitle>
-                        <SheetDescription>Ask questions about this policy</SheetDescription>
-                      </SheetHeader>
-                      <div className="mt-6 space-y-4">
-                        <Textarea
-                          placeholder="What are the coverage limits?"
-                          value={chatQuestion}
-                          onChange={(e) => setChatQuestion(e.target.value)}
-                        />
-                        <Button onClick={handleAskQuestion} className="w-full">Ask Question</Button>
+                <StatusBadge status={policy.status} />
+              </div>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              {/* Policy Details */}
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Coverage</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {coverageTypeLabels[policy.coverageType]}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Carrier</span>
+                  <span className="text-sm text-muted-foreground">{policy.carrier}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Premium</span>
+                  <span className="text-sm font-medium">${policy.premiumAnnual.toLocaleString()}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Expires</span>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(policy.expirationDate).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Eye className="mr-1 h-3 w-3" />
+                  View
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <ArrowLeftRight className="mr-1 h-3 w-3" />
+                  Compare
+                </Button>
+                
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => setSelectedPolicy(policy)}
+                    >
+                      <MessageSquare className="mr-1 h-3 w-3" />
+                      Ask AI
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-[500px]">
+                    <SheetHeader>
+                      <SheetTitle>Policy Q&A - {policy.policyNumber}</SheetTitle>
+                      <SheetDescription>Ask questions about this policy</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                      <Textarea
+                        placeholder="What are the coverage limits?"
+                        value={chatQuestion}
+                        onChange={(e) => setChatQuestion(e.target.value)}
+                      />
+                      <Button onClick={handleAskQuestion} className="w-full">Ask Question</Button>
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
                         {chatHistory.map((chat, index) => (
-                          <div key={index} className="p-3 border rounded space-y-2">
+                          <div key={index} className="p-3 border rounded-lg space-y-2">
                             <div className="text-sm font-medium">Q: {chat.question}</div>
                             <div className="text-sm text-muted-foreground">A: {chat.answer}</div>
                           </div>
                         ))}
                       </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <div className="text-sm font-medium">Coverage</div>
-                  <Badge variant="secondary">{coverageTypeLabels[policy.coverageType]}</Badge>
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Carrier</div>
-                  <div className="text-sm text-muted-foreground">{policy.carrier}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Premium</div>
-                  <div className="text-sm text-muted-foreground">${policy.premiumAnnual.toLocaleString()}</div>
-                </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Empty State */}
+      {mockPolicies.length === 0 && (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center space-y-3">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <h3 className="text-lg font-medium">No policies found</h3>
+                <p className="text-muted-foreground">Get started by adding your first policy</p>
+              </div>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Policy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -5,25 +5,29 @@ export const mockBuildings: Building[] = [
     id: 'bld-1',
     name: 'Sunset Plaza',
     address: '123 Main St, Los Angeles, CA 90210',
-    notes: '24-unit apartment complex'
+    notes: '24-unit apartment complex',
+    primaryAgentId: 'agent-1'
   },
   {
     id: 'bld-2', 
     name: 'Ocean View Towers',
     address: '456 Pacific Ave, Santa Monica, CA 90401',
-    notes: 'High-rise residential building'
+    notes: 'High-rise residential building',
+    primaryAgentId: 'agent-2'
   },
   {
     id: 'bld-3',
     name: 'Downtown Lofts',
     address: '789 Spring St, Los Angeles, CA 90014',
-    notes: 'Historic converted warehouse'
+    notes: 'Historic converted warehouse',
+    primaryAgentId: 'agent-2'
   },
   {
     id: 'bld-4',
     name: 'Beverly Gardens',
     address: '321 Rodeo Dr, Beverly Hills, CA 90210',
-    notes: 'Luxury apartment complex'
+    notes: 'Luxury apartment complex',
+    primaryAgentId: 'agent-4'
   }
 ];
 
