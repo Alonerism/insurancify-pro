@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Filter, Search, LayoutGrid, LayoutList } from "lucide-react";
+import { Plus, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,10 @@ import { Building, Policy } from "@/types";
 
 export default function AssignmentMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showMatrix, setShowMatrix] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [selectedPolicies, setSelectedPolicies] = useState<Policy[]>([]);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [highlightExpiring, setHighlightExpiring] = useState(false);
 
   // Group buildings by agent
   const getBuildingsByAgent = () => {
@@ -45,6 +45,18 @@ export default function AssignmentMatrix() {
     return mockPolicies.filter(policy => policy.buildingId === buildingId);
   };
 
+  // Check if building has policies expiring in next 60 days
+  const isBuildingExpiring = (buildingId: string): boolean => {
+    const policies = getPoliciesForBuilding(buildingId);
+    const now = new Date();
+    const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    
+    return policies.some(policy => {
+      const expirationDate = new Date(policy.expirationDate);
+      return expirationDate <= sixtyDaysFromNow && expirationDate > now;
+    });
+  };
+
   // Filter agents based on search
   const filteredAgents = mockAgents.filter((agent) =>
     agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,53 +83,6 @@ export default function AssignmentMatrix() {
 
   const buildingsByAgent = getBuildingsByAgent();
 
-  if (showMatrix) {
-    // Classic matrix view (existing code would go here)
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Assignment Matrix</h1>
-            <p className="text-muted-foreground">
-              Manage policy assignments across buildings and agents
-            </p>
-          </div>
-          
-          <div className="flex gap-2">
-            <Toggle 
-              pressed={showMatrix} 
-              onPressedChange={setShowMatrix}
-              variant="outline"
-            >
-              <LayoutList className="mr-2 h-4 w-4" />
-              Matrix View
-            </Toggle>
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Building
-            </Button>
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Agent
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Policy
-            </Button>
-          </div>
-        </div>
-        
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-center text-muted-foreground">
-              Classic matrix view would be implemented here
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -129,14 +94,6 @@ export default function AssignmentMatrix() {
         </div>
         
         <div className="flex gap-2">
-          <Toggle 
-            pressed={showMatrix} 
-            onPressedChange={setShowMatrix}
-            variant="outline"
-          >
-            <LayoutList className="mr-2 h-4 w-4" />
-            Matrix View
-          </Toggle>
           <Button variant="outline">
             <Plus className="mr-2 h-4 w-4" />
             Add Building
@@ -170,11 +127,10 @@ export default function AssignmentMatrix() {
                 />
               </div>
             </div>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Coverage Type
-            </Button>
-            <Button variant="outline">
+            <Button 
+              variant={highlightExpiring ? "default" : "outline"}
+              onClick={() => setHighlightExpiring(!highlightExpiring)}
+            >
               <Filter className="mr-2 h-4 w-4" />
               Expiring Soon
             </Button>
@@ -200,6 +156,7 @@ export default function AssignmentMatrix() {
                 >
                   {buildingsByAgent[agent.id]?.map((building) => {
                     const policies = getPoliciesForBuilding(building.id);
+                    const isExpiring = highlightExpiring && isBuildingExpiring(building.id);
                     return (
                       <BuildingTile
                         key={building.id}
@@ -208,6 +165,7 @@ export default function AssignmentMatrix() {
                         agents={mockAgents.filter(a => a.id !== agent.id)}
                         onMove={handleBuildingMove}
                         onClick={handleBuildingClick}
+                        isExpiring={isExpiring}
                       />
                     );
                   })}
@@ -238,6 +196,7 @@ export default function AssignmentMatrix() {
               >
                 {buildingsByAgent['unassigned']?.map((building) => {
                   const policies = getPoliciesForBuilding(building.id);
+                  const isExpiring = highlightExpiring && isBuildingExpiring(building.id);
                   return (
                     <BuildingTile
                       key={building.id}
@@ -246,6 +205,7 @@ export default function AssignmentMatrix() {
                       agents={mockAgents}
                       onMove={handleBuildingMove}
                       onClick={handleBuildingClick}
+                      isExpiring={isExpiring}
                     />
                   );
                 })}

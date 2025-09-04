@@ -15,6 +15,7 @@ interface BuildingTileProps {
   onMove?: (buildingId: string, newAgentId: string) => void;
   onClick?: (building: Building, policies: Policy[]) => void;
   isDragging?: boolean;
+  isExpiring?: boolean;
 }
 
 export function BuildingTile({ 
@@ -23,7 +24,8 @@ export function BuildingTile({
   agents, 
   onMove, 
   onClick, 
-  isDragging 
+  isDragging,
+  isExpiring = false
 }: BuildingTileProps) {
   const [isHovered, setIsHovered] = useState(false);
   
@@ -43,7 +45,9 @@ export function BuildingTile({
     <Card 
       className={`cursor-pointer transition-all duration-200 ${
         isDragging ? 'opacity-50 rotate-2 scale-105' : ''
-      } ${isHovered ? 'ring-2 ring-primary/50' : ''}`}
+      } ${isHovered ? 'ring-2 ring-primary/50' : ''} ${
+        isExpiring ? 'ring-2 ring-amber-400 bg-amber-50 border-amber-300' : ''
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick?.(building, policies)}
