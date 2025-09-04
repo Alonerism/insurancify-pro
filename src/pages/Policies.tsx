@@ -85,26 +85,22 @@ export default function Policies() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Eye className="mr-1 h-3 w-3" />
-                  View
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <Button variant="outline" size="sm">
+                  <Eye className="h-3 w-3" />
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <ArrowLeftRight className="mr-1 h-3 w-3" />
-                  Compare
+                <Button variant="outline" size="sm">
+                  <ArrowLeftRight className="h-3 w-3" />
                 </Button>
                 
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button 
                       variant="outline" 
-                      size="sm" 
-                      className="flex-1 min-w-0"
+                      size="sm"
                       onClick={() => setSelectedPolicy(policy)}
                     >
-                      <MessageSquare className="mr-1 h-3 w-3" />
-                      Ask AI
+                      <MessageSquare className="h-3 w-3" />
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="w-[500px]">
