@@ -5,10 +5,13 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from models import Base, SEARCH_TABLE_SQL
+from .models import Base, SEARCH_TABLE_SQL
+from .migrations import run_migrations
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/insurance.db")
@@ -44,6 +47,15 @@ def init_database():
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    
+    # Run database migrations
+    db_path = DATABASE_URL.replace("sqlite:///", "").replace("./", "")
+    logger.info(f"Running migrations on database: {db_path}")
+    migration_success = run_migrations(db_path)
+    
+    if not migration_success:
+        logger.error("Migration failed")
+        raise Exception("Database migration failed")
     
     # Create FTS5 virtual table for search
     with engine.connect() as conn:

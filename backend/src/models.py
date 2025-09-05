@@ -109,6 +109,28 @@ class Alert(Base):
     # Relationships
     policy = relationship("Policy")
 
+class Claim(Base):
+    __tablename__ = "claims"
+    
+    id = Column(Integer, primary_key=True)
+    policy_id = Column(String, ForeignKey("policies.id"), nullable=False)
+    claim_number = Column(String, nullable=False)
+    date = Column(String)  # ISO date string
+    amount = Column(Float)
+    status = Column(String, nullable=False, default='open')  # 'open', 'pending', 'closed'
+    note = Column(Text)
+    created_at = Column(String, nullable=False, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=False, default=lambda: datetime.utcnow().isoformat())
+    
+    # Relationships
+    policy = relationship("Policy")
+
+class CarrierMap(Base):
+    __tablename__ = "carriers_map"
+    
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+
 # Virtual table for full-text search (SQLite FTS5)
 # This will be created manually via SQL since SQLAlchemy doesn't handle FTS5 well
 SEARCH_TABLE_SQL = """

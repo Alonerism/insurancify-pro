@@ -1,6 +1,6 @@
 """
 FastAPI HTTP server for Insurance Management System
-Provides REST API endpoints for the UI
+Provides REST API endpoints for the UI including v1 API routes
 """
 import os
 import logging
@@ -12,7 +12,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from ui_backend_adapter import UIBackendAdapter, get_adapter
+from .database import run_migrations
+from .api.v1.routes import router as v1_router
+
+# from ui_backend_adapter import UIBackendAdapter, get_adapter
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +72,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include v1 API routes
+app.include_router(v1_router)
+
+# Run migrations on startup
+@app.on_event("startup")
+async def startup_event():
+    """Run database migrations on startup"""
+    try:
+        run_migrations()
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}")
+        # Don't raise to prevent server startup failure
 
 # Health check
 @app.get("/health")
