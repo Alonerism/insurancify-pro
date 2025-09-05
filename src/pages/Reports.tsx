@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,77 +10,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BarChart3, Download, Calendar, TrendingUp, FileText, DollarSign, Shield, AlertTriangle } from "lucide-react";
-
-const availableReports = [
-  {
-    id: 1,
-    name: "Policies Expiring in Next 30 Days",
-    description: "List of all policies expiring within the next 30 days",
-    category: "Renewals",
-    lastGenerated: "2024-01-15",
-    recordCount: 8,
-    status: "ready",
-  },
-  {
-    id: 2,
-    name: "Coverage Gaps Analysis",
-    description: "Properties with missing or insufficient coverage",
-    category: "Coverage",
-    lastGenerated: "2024-01-14",
-    recordCount: 12,
-    status: "ready",
-  },
-  {
-    id: 3,
-    name: "Annual Premium Summary by Carrier",
-    description: "Total premiums paid to each insurance carrier",
-    category: "Financial",
-    lastGenerated: "2024-01-13",
-    recordCount: 15,
-    status: "ready",
-  },
-  {
-    id: 4,
-    name: "Open Claims Summary",
-    description: "All open claims with reserves and status details",
-    category: "Claims",
-    lastGenerated: "2024-01-12",
-    recordCount: 5,
-    status: "ready",
-  },
-  {
-    id: 5,
-    name: "Property Insurance Portfolio",
-    description: "Comprehensive overview of all properties and their insurance",
-    category: "Portfolio",
-    lastGenerated: "2024-01-10",
-    recordCount: 24,
-    status: "ready",
-  },
-];
+import { BarChart3, Download, Calendar, TrendingUp, FileText, DollarSign, Shield, AlertTriangle, Loader2 } from "lucide-react";
+import { usePolicies } from "@/hooks/useApi";
+import { toast } from "@/hooks/use-toast";
 
 const recentActivity = [
   {
     id: 1,
-    report: "Policies Expiring in Next 30 Days",
-    action: "Downloaded",
-    user: "Sarah Mitchell",
-    timestamp: "2024-01-15 10:30 AM",
+    report: "Policies Expiring Report",
+    action: "Generated",
+    user: "System",
+    timestamp: new Date().toLocaleDateString(),
   },
   {
     id: 2,
-    report: "Coverage Gaps Analysis", 
+    report: "Premium Summary", 
     action: "Generated",
-    user: "John Smith",
-    timestamp: "2024-01-14 3:45 PM",
+    user: "System",
+    timestamp: new Date().toLocaleDateString(),
   },
   {
     id: 3,
-    report: "Annual Premium Summary",
-    action: "Scheduled",
+    report: "Portfolio Summary",
+    action: "Generated",
     user: "System",
-    timestamp: "2024-01-14 12:00 PM",
+    timestamp: new Date().toLocaleDateString(),
   },
 ];
 
@@ -97,6 +52,89 @@ const getCategoryBadge = (category: string) => {
 };
 
 export default function Reports() {
+  const { data: policies = [], isLoading, error } = usePolicies();
+
+  // Generate dynamic reports based on real data
+  const availableReports = [
+    {
+      id: 1,
+      name: "Policies Expiring in Next 30 Days",
+      description: "List of all policies expiring within the next 30 days",
+      category: "Renewals",
+      lastGenerated: new Date().toLocaleDateString(),
+      recordCount: policies.filter(p => {
+        if (!p.expirationDate) return false;
+        const expDate = new Date(p.expirationDate);
+        const today = new Date();
+        const daysUntil = (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+        return daysUntil <= 30 && daysUntil > 0;
+      }).length,
+      status: "ready",
+    },
+    {
+      id: 2,
+      name: "Active Policies Summary", 
+      description: "Overview of all active insurance policies",
+      category: "Portfolio",
+      lastGenerated: new Date().toLocaleDateString(),
+      recordCount: policies.filter(p => p.status === 'active').length,
+      status: "ready",
+    },
+    {
+      id: 3,
+      name: "Premium Analysis by Carrier",
+      description: "Total premiums grouped by insurance carrier",
+      category: "Financial",
+      lastGenerated: new Date().toLocaleDateString(),
+      recordCount: new Set(policies.map(p => p.carrier).filter(Boolean)).size,
+      status: "ready",
+    },
+    {
+      id: 4,
+      name: "Coverage Distribution Report",
+      description: "Breakdown of coverage types across portfolio",
+      category: "Coverage",
+      lastGenerated: new Date().toLocaleDateString(),
+      recordCount: new Set(policies.map(p => p.coverageType).filter(Boolean)).size,
+      status: "ready",
+    },
+    {
+      id: 5,
+      name: "Property Portfolio Overview",
+      description: "Summary of all properties and associated policies",
+      category: "Portfolio",
+      lastGenerated: new Date().toLocaleDateString(),
+      recordCount: new Set(policies.map(p => p.buildingId).filter(Boolean)).size,
+      status: "ready",
+    },
+  ];
+
+  const handleCustomReport = () => {
+    toast({
+      title: "Coming Soon",
+      description: "Custom report builder will be available soon.",
+    });
+  };
+
+  const handleExportReport = (reportName: string) => {
+    toast({
+      title: "Coming Soon",
+      description: `Export for "${reportName}" will be available soon.`,
+    });
+  };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive mb-2">Failed to load reports</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -107,7 +145,7 @@ export default function Reports() {
             Generate insights and export data from your insurance portfolio
           </p>
         </div>
-        <Button>
+        <Button onClick={handleCustomReport}>
           <FileText className="mr-2 h-4 w-4" />
           Custom Report
         </Button>
@@ -180,42 +218,48 @@ export default function Reports() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Report</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Records</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {availableReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{report.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {report.description}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getCategoryBadge(report.category)}
-                    </TableCell>
-                    <TableCell>{report.recordCount}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline">
-                          <Download className="mr-1 h-3 w-3" />
-                          Export
-                        </Button>
-                      </div>
-                    </TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Report</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Records</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {availableReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{report.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {report.description}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getCategoryBadge(report.category)}
+                      </TableCell>
+                      <TableCell>{report.recordCount}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => handleExportReport(report.name)}>
+                            <Download className="mr-1 h-3 w-3" />
+                            Export
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
