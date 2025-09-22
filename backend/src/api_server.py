@@ -12,10 +12,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from .database import run_migrations
-from .api.v1.routes import router as v1_router
+from database import run_migrations
+from api.v1.routes import router as v1_router
 
-# from ui_backend_adapter import UIBackendAdapter, get_adapter
+from ui_backend_adapter import UIBackendAdapter, get_adapter
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

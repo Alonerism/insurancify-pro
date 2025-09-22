@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug Test</title>
+</head>
+<body>
+    <h1>API Debug Test</h1>
+    <button onclick="testApi()">Test API Connection</button>
+    <div id="results"></div>
+
+    <script>
+        async function testApi() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing API...</p>';
+            
+            const baseUrl = 'http://127.0.0.1:8001';
+            const endpoint = '/v1/health';
+            const fullUrl = baseUrl + endpoint;
+            
+            console.log('Testing API URL:', fullUrl);
+            
+            try {
+                const response = await fetch(fullUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response:', response);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Data:', data);
+                
+                results.innerHTML = `
+                    <h3>✅ Success!</h3>
+                    <p><strong>URL:</strong> ${fullUrl}</p>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('API Error:', error);
+                results.innerHTML = `
+                    <h3>❌ Error!</h3>
+                    <p><strong>URL:</strong> ${fullUrl}</p>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

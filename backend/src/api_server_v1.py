@@ -11,8 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from .database import run_migrations
-from .api.v1.routes import router as v1_router
+from database import run_migrations
+from api.v1.routes import router as v1_router
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

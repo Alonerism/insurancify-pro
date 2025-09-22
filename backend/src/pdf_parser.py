@@ -11,8 +11,8 @@ from datetime import datetime
 import pdfplumber
 import PyPDF2
 from io import BytesIO
-from .database import SessionLocal
-from .models import CarrierMap
+from database import SessionLocal
+from models import CarrierMap
 
 logger = logging.getLogger(__name__)
 

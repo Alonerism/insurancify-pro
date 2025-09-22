@@ -5,8 +5,8 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from .models import Base, SEARCH_TABLE_SQL
-from .migrations import run_migrations
+from models import Base, SEARCH_TABLE_SQL
+from migrations import run_migrations
 from dotenv import load_dotenv
 import logging
 

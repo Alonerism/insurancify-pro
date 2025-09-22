@@ -15,12 +15,12 @@ import shutil
 import os
 from datetime import datetime
 
-from ...database import get_db
-from ...models import PolicyFile, Claim
-# from ...models import Property  # TODO: Add Property model if needed
-from ...pdf_parser import PDFParser
-from ...search_engine import SearchEngine
-from ...alert_service import AlertService
+from database import get_db
+from models import PolicyFile, Claim
+# from models import Property  # TODO: Add Property model if needed
+from pdf_parser import PDFParser
+from search_engine import SearchEngine
+from alert_service import AlertService
 
 logger = logging.getLogger(__name__)
 

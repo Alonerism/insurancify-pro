@@ -21,10 +21,10 @@ export function QuickViewDrawer({ open, onOpenChange, building, policies }: Quic
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string }>>([]);
   const [showChat, setShowChat] = useState(false);
+  // Hooks must run unconditionally
+  const { data: agents = [] } = useAgents();
 
   if (!building) return null;
-
-  const { data: agents = [] } = useAgents();
   const primaryPolicy = policies.length > 0 ? policies[0] : null;
   const agent = primaryPolicy ? agents.find(a => a.id === primaryPolicy.agentId) : null;
 

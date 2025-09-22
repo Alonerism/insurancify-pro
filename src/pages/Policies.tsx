@@ -21,9 +21,11 @@ export default function Policies() {
   const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string }>>([]);
   const [newNote, setNewNote] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterAgent, setFilterAgent] = useState<string>("");
-  const [filterBuilding, setFilterBuilding] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  // Filter state uses 'all' sentinel instead of empty string because Radix Select disallows empty string values
+  const ALL = 'all';
+  const [filterAgent, setFilterAgent] = useState<string>(ALL);
+  const [filterBuilding, setFilterBuilding] = useState<string>(ALL);
+  const [filterStatus, setFilterStatus] = useState<string>(ALL);
   const [uploadingFile, setUploadingFile] = useState(false);
 
   // API Hooks
@@ -46,9 +48,9 @@ export default function Policies() {
       policy.carrier.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getBuildingName(policy.buildingId).toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesAgent = !filterAgent || policy.agentId === filterAgent;
-    const matchesBuilding = !filterBuilding || policy.buildingId === filterBuilding;
-    const matchesStatus = !filterStatus || policy.status === filterStatus;
+    const matchesAgent = filterAgent === ALL || policy.agentId === filterAgent;
+    const matchesBuilding = filterBuilding === ALL || policy.buildingId === filterBuilding;
+    const matchesStatus = filterStatus === ALL || policy.status === filterStatus;
     
     return matchesSearch && matchesAgent && matchesBuilding && matchesStatus;
   });
@@ -150,12 +152,12 @@ export default function Policies() {
             </div>
             <div>
               <Label>Filter by Agent</Label>
-              <Select value={filterAgent} onValueChange={setFilterAgent}>
+        <Select value={filterAgent} onValueChange={setFilterAgent}>
                 <SelectTrigger>
                   <SelectValue placeholder="All agents" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All agents</SelectItem>
+          <SelectItem value={ALL}>All agents</SelectItem>
                   {agents.map(agent => (
                     <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
                   ))}
@@ -164,12 +166,12 @@ export default function Policies() {
             </div>
             <div>
               <Label>Filter by Building</Label>
-              <Select value={filterBuilding} onValueChange={setFilterBuilding}>
+        <Select value={filterBuilding} onValueChange={setFilterBuilding}>
                 <SelectTrigger>
                   <SelectValue placeholder="All buildings" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All buildings</SelectItem>
+          <SelectItem value={ALL}>All buildings</SelectItem>
                   {buildings.map(building => (
                     <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
                   ))}
@@ -178,12 +180,12 @@ export default function Policies() {
             </div>
             <div>
               <Label>Filter by Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+          <SelectItem value={ALL}>All statuses</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="expiring-soon">Expiring Soon</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
@@ -230,13 +232,13 @@ export default function Policies() {
                 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Premium</span>
-                  <span className="text-sm font-medium">${policy.premiumAnnual.toLocaleString()}</span>
+                  <span className="text-sm font-medium">${(policy.premiumAnnual ?? 0).toLocaleString()}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Expires</span>
                   <span className="text-sm text-muted-foreground">
-                    {new Date(policy.expirationDate).toLocaleDateString()}
+                    {policy.expirationDate ? new Date(policy.expirationDate).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
               </div>
@@ -376,7 +378,7 @@ export default function Policies() {
       </div>
 
       {/* Empty State */}
-      {filteredPolicies.length === 0 && !policiesLoading && (
+  {filteredPolicies.length === 0 && !policiesLoading && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center space-y-3">
@@ -384,7 +386,7 @@ export default function Policies() {
               <div>
                 <h3 className="text-lg font-medium">No policies found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm || filterAgent || filterBuilding || filterStatus ? 
+      {searchTerm || (filterAgent !== ALL) || (filterBuilding !== ALL) || (filterStatus !== ALL) ? 
                     'Try adjusting your filters' : 
                     'Get started by adding your first policy'
                   }
